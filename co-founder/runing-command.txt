@@ -1,0 +1,6 @@
+pip install -r requirements.txt
+python cli.py status          # shows how many docs are indexed per category
+python cli.py agents          # lists the 7 personas
+python cli.py audit --desc "Automated CV screening for recruitment"   # → Tier 3, needs approval
+python cli.py ask "What should our pricing strategy be?"              # routes to Business agent
+python cli.py chat            # interactive loop

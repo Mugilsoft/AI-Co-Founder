@@ -1,0 +1,23 @@
+{
+  "query": "test query",
+  "icp": {
+    "industry": "EPC / Construction / Infrastructure companies in India",
+    "signals": [
+      "active tender/bidding process",
+      "digital transformation initiative",
+      "AI adoption interest"
+    ],
+    "company_size": "200-2000 employees",
+    "region": "India",
+    "buyer_titles": [
+      "Digital Transformation Head",
+      "IT Head",
+      "VP Operations",
+      "CTO"
+    ]
+  },
+  "leads": [],
+  "grounding_sources": [],
+  "disclaimer": "Test offline mode No leads were fabricated. Configure a Gemini API key with search grounding enabled to generate real, verifiable leads.",
+  "generated_at": "2026-09-27T10:04:13.126075Z"
+}

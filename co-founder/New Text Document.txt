@@ -1,0 +1,14 @@
+In Google Cloud Console, create (or pick) a project, then go to APIs & Services → Library, search 'Gmail API', and click Enable. This is what lets your agent read and send mail on your behalf.
+
+Under APIs & Services → Credentials, click Create Credentials → OAuth client ID → Desktop app. Download the file and save it as credentials.json in your co-founder project root — never commit this file to git.
+
+Decide up front: read-only (gmail.readonly) if the agent should only summarize/monitor mail, or gmail.send / gmail.modify if it should draft or send on your behalf. Narrower scopes are safer and easier to get approved later if you ever go multi-user
+
+Add google-api-python-client and google-auth-oauthlib to requirements.txt (you already have google-auth). Run pip install -r requirements.txt.
+
+Add gmail_connector.py and system_tools.py (below) to your project. The first handles the OAuth flow and email actions; the second exposes safe, logged local-system actions (read/write files, list directories, run whitelisted commands).
+
+Route every email-send and every system-write call through GovernanceGateChecker before it executes. Sending an email to a customer or writing/deleting a file should be at least Tier 2 — Tier 3 if it touches personal data or is irreversible.
+
+
+Run the connector once locally: it opens a browser window for you to log into your Google account and approve the scopes. It then saves a token.json so future runs don't re-prompt. Test with a read-only call before enabling send.
