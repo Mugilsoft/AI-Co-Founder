@@ -18,10 +18,19 @@ import os
 from email.mime.text import MIMEText
 from typing import Optional
 
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
+try:
+    from google.auth.transport.requests import Request
+    from google.oauth2.credentials import Credentials
+    from google_auth_oauthlib.flow import InstalledAppFlow
+    from googleapiclient.discovery import build
+except ImportError as exc:  # pragma: no cover - dependency may be missing in editor env
+    Request = None  # type: ignore[assignment]
+    Credentials = None  # type: ignore[assignment]
+    InstalledAppFlow = None  # type: ignore[assignment]
+    build = None  # type: ignore[assignment]
+    _GMAIL_IMPORT_ERROR = exc
+else:
+    _GMAIL_IMPORT_ERROR = None
 
 # Narrowest scope by default. Add "https://www.googleapis.com/auth/gmail.send"
 # only once you're ready for the agent to send mail, and gmail.modify only if

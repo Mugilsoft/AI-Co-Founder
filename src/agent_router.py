@@ -12,7 +12,8 @@ class AgentRouter:
         "governance": "Responsible AI & Governance Officer",
         "product": "Product Manager",
         "developer": "Full-Stack Lead Developer",
-        "leads": "Leads & Growth Specialist"
+        "leads": "Leads & Growth Specialist",
+        "ba_agent": "Business Analyst Agent",
     }
 
     def __init__(self, loader: KnowledgeBaseLoader):

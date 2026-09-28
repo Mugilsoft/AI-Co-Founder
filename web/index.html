@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#111827">
+    <title>AI Co-Founder | Shared Chat</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/app.js" defer></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">M</div>
+          <div>
+            <h1>AI Co-Founder</h1>
+            <p>Shared conversation · Mugil Soft Solutions</p>
+          </div>
+        </div>
+        <span class="connection"><span class="connection-dot"></span>Private network</span>
+      </header>
+
+      <section class="chat-panel" aria-label="Shared conversation">
+        <div class="chat-heading">
+          <div>
+            <p class="eyebrow">YOUR WORKSPACE</p>
+            <h2>Co-founder chat</h2>
+          </div>
+          <label class="agent-select">
+            <span>Talk to</span>
+            <select id="agent">
+              <option value="orchestrator">Orchestrator</option>
+              <option value="business">Business</option>
+              <option value="cto">CTO</option>
+              <option value="ai_lead">AI Lead</option>
+              <option value="governance">Governance</option>
+              <option value="product">Product</option>
+              <option value="developer">Developer</option>
+              <option value="leads">Leads &amp; Growth</option>
+              <option value="ba_agent">Business Analyst</option>
+            </select>
+          </label>
+        </div>
+
+        <div id="login" class="login-card" hidden>
+          <div class="login-icon" aria-hidden="true">🔒</div>
+          <h2>Enter your chat access code</h2>
+          <p>Use the code printed in the server terminal. Enter the same code on your PC and phone.</p>
+          <form id="login-form">
+            <label for="access-code">Access code</label>
+            <input id="access-code" type="password" autocomplete="current-password" required>
+            <button type="submit">Open shared chat</button>
+          </form>
+          <p id="login-error" class="error" role="alert"></p>
+        </div>
+
+        <div id="messages" class="messages" aria-live="polite" aria-label="Messages"></div>
+        <p id="status" class="status" role="status"></p>
+        <form id="chat-form" class="composer">
+          <label class="sr-only" for="message-input">Your message</label>
+          <textarea id="message-input" rows="1" maxlength="4000" placeholder="Ask your co-founder anything…" required></textarea>
+          <div class="composer-footer">
+            <p>Private Wi-Fi only · Responses are shared between connected devices</p>
+            <button id="send-button" type="submit" aria-label="Send message">
+              <span>Send</span><span aria-hidden="true">↗</span>
+            </button>
+          </div>
+        </form>
+      </section>
+      <footer>AI Co-Founder <span>•</span> Shared chat is saved on the host PC</footer>
+    </main>
+  </body>
+</html>
