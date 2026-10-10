@@ -3,6 +3,15 @@ from typing import Dict, Any, List
 from src.knowledge_loader import KnowledgeBaseLoader
 from src.governance_checker import GovernanceGateChecker
 from src.lead_finder import LeadFinder
+
+# Top-level import — not repeated on every request
+try:
+    from google.genai import types as _genai_types
+    _HAS_GENAI_TYPES = True
+except ImportError:
+    _HAS_GENAI_TYPES = False
+
+
 class AgentRouter:
     AGENTS = {
         "orchestrator": "Co-Founder & Strategy Orchestrator",
@@ -12,7 +21,8 @@ class AgentRouter:
         "governance": "Responsible AI & Governance Officer",
         "product": "Product Manager",
         "developer": "Full-Stack Lead Developer",
-        "leads": "Leads & Growth Specialist"
+        "leads": "Leads & Growth Specialist",
+        "ba_agent": "Business Analyst Agent",
     }
 
     def __init__(self, loader: KnowledgeBaseLoader):
@@ -21,6 +31,21 @@ class AgentRouter:
         self.lead_finder = LeadFinder(loader)
         self.api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
         self.client = None
+
+        # ── Read config ONCE at startup, not on every request ─────────────────
+        self._model_name = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
+        self._max_tokens = int(os.environ.get("MAX_OUTPUT_TOKENS", "1024"))
+        self._temperature = float(os.environ.get("LLM_TEMPERATURE", "0.3"))
+        self._max_context_chars = int(os.environ.get("MAX_CONTEXT_CHARS", "3000"))
+        self._max_query_chars = int(os.environ.get("MAX_QUERY_CHARS", "2000"))
+
+        # ── Build GenerateContentConfig ONCE — reused across all requests ──────
+        self._gen_config = None
+        if _HAS_GENAI_TYPES:
+            self._gen_config = _genai_types.GenerateContentConfig(
+                max_output_tokens=self._max_tokens,
+                temperature=self._temperature,
+            )
 
         if self.api_key:
             try:
@@ -36,13 +61,13 @@ class AgentRouter:
         if agent_key == "leads":
             return self._handle_leads_query(query)
 
-       
         agent_name = self.AGENTS.get(agent_key, self.AGENTS["orchestrator"])
-        
-        # 1. Retrieve relevant RAG context
+
+        # 1. Retrieve relevant RAG context (budget-controlled)
         retrieved_docs = self.loader.search(query, top_k=3)
+        chars_per_doc = self._max_context_chars // max(len(retrieved_docs), 1)
         context_str = "\n\n".join([
-            f"--- Context Doc: {d['relative_path']} ({d['title']}) ---\n{d['content'][:1500]}..."
+            f"--- Context Doc: {d['relative_path']} ({d['title']}) ---\n{d['content'][:chars_per_doc]}..."
             for d in retrieved_docs
         ])
 
@@ -65,14 +90,42 @@ Use the provided knowledge base context to answer concisely and professionally i
 Context:
 {context_str}
 """
-                model_name = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
+                bounded_query = query[:self._max_query_chars]
+
                 response = self.client.models.generate_content(
-                    model=model_name,
-                    contents=f"{system_prompt}\n\nUser Question: {query}"
+                    model=self._model_name,
+                    contents=f"{system_prompt}\n\nUser Question: {bounded_query}",
+                    config=self._gen_config,  # reused cached config
                 )
-                answer_text = response.text
+
+                # Guard against empty/None response (e.g. safety filter blocks)
+                raw_text = getattr(response, "text", None)
+                if not raw_text:
+                    finish = (
+                        getattr(response.candidates[0], "finish_reason", "UNKNOWN")
+                        if getattr(response, "candidates", None)
+                        else "NO_CANDIDATES"
+                    )
+                    answer_text = (
+                        f"> [!WARNING]\n"
+                        f"> **Model returned an empty response** (finish_reason: `{finish}`). "
+                        "This may be due to a safety filter or blocked content. "
+                        "Falling back to knowledge base.\n\n"
+                    ) + self._offline_response(agent_key, query, retrieved_docs, hitl_warning)
+                else:
+                    answer_text = raw_text
+
             except Exception as e:
-                answer_text = self._offline_response(agent_key, query, retrieved_docs, hitl_warning)
+                err_str = str(e)
+                if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                    quota_notice = (
+                        "> [!NOTE]\n"
+                        "> **API Quota Limit Reached (429 Rate Limit)**: Free-tier limit reached. "
+                        "Displaying verified knowledge base analysis below.\n\n"
+                    )
+                    answer_text = quota_notice + self._offline_response(agent_key, query, retrieved_docs, hitl_warning)
+                else:
+                    answer_text = self._offline_response(agent_key, query, retrieved_docs, hitl_warning)
         else:
             answer_text = self._offline_response(agent_key, query, retrieved_docs, hitl_warning)
 
@@ -145,7 +198,7 @@ Context:
             text += "#### Product Requirement Specification\n"
             text += "- **Phase 1 MVP Scope**: Focus strictly on Must-Have features defined via MoSCoW prioritization.\n"
             text += "- **Workflow Reference**: Follow 5-phase development lifecycle in `templates/product-development-template.md`.\n"
-        else: # orchestrator / general
+        else:  # orchestrator / general
             text += "#### Executive Co-Founder Synthesis\n"
             text += "- **Strategic Alignment**: Directly supports Mugil Soft Solutions' mission (*Innovating Today. Empowering Tomorrow.*).\n"
             text += "- **Next Action**: Execute the 15-point AI Engineering Checklist (`templates/ai-engineering-checklist.md`) before sprint commitment.\n"

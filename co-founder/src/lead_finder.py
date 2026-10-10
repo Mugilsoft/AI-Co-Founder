@@ -20,6 +20,13 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 from src.google_sheets_exporter import GoogleSheetsExporter
 
+# Top-level import — not repeated on every request
+try:
+    from google.genai import types as _genai_types
+    _HAS_GENAI_TYPES = True
+except ImportError:
+    _HAS_GENAI_TYPES = False
+
 
 class LeadFinder:
     """Leads sub-agent for the Mugil AI Co-Founder system."""
@@ -45,6 +52,20 @@ class LeadFinder:
         self.api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
         self.client = None
         self.search_enabled = False
+
+        # ── Read config ONCE at startup ────────────────────────────────────
+        self._model_name = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
+        # Leads JSON needs more tokens than general chat — use separate budget
+        self._max_tokens = int(os.environ.get("LEADS_MAX_OUTPUT_TOKENS", "2048"))
+
+        # ── Build config ONCE — reused for all lead requests ──────────────────
+        self._gen_config = None
+        if _HAS_GENAI_TYPES:
+            self._gen_config = _genai_types.GenerateContentConfig(
+                max_output_tokens=self._max_tokens,
+                temperature=0.1,  # low temp for consistent structured JSON output
+                tools=[_genai_types.Tool(google_search=_genai_types.GoogleSearch())]
+            )
 
         if self.api_key:
             try:
@@ -105,7 +126,6 @@ class LeadFinder:
             return self._offline_response(query, reason="No GEMINI_API_KEY/GOOGLE_API_KEY configured.")
 
         try:
-            from google.genai import types
 
             previous_companies = self._get_previously_saved_companies()
             exclude_prompt = ""
@@ -136,13 +156,10 @@ DRAFT for human review — do not imply it will be sent automatically.
 User request: {query}
 """
 
-            model_name = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
             response = self.client.models.generate_content(
-                model=model_name,
+                model=self._model_name,
                 contents=system_prompt,
-                config=types.GenerateContentConfig(
-                    tools=[types.Tool(google_search=types.GoogleSearch())]
-                ),
+                config=self._gen_config,  # reused cached config (2048 tokens, temp=0.1)
             )
 
             leads = self._parse_leads_json(response.text or "")

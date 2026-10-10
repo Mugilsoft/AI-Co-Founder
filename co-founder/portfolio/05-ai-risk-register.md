@@ -85,6 +85,21 @@
 
 ---
 
+## Use Case 4: AI Clinical Decision Support & Patient Record Analytics for Medical Clinics
+
+**System Description:** An AI Clinical Decision Support System (CDSS) for medical clinics that analyzes electronic health records (EHR), lab reports, and clinical notes to assist attending physicians with diagnostic possibilities, risk stratification, and differential diagnosis recommendations.
+
+| # | Risk | Description | Affected Users | Severity | Likelihood | Control | Owner | Evidence |
+|---|------|-------------|----------------|----------|------------|---------|-------|----------|
+| CD-01 | **Diagnostic Misclassification / False Negatives** | AI misses a critical clinical indicator or suggests an incorrect differential diagnosis, risking patient harm or delayed critical intervention | Patients, attending physicians | Critical | Possible | Enforce mandatory Human-in-the-Loop (HITL) physician sign-off; AI outputs strictly advisory; confidence intervals displayed; doctor override mandatory | Clinical Director + AI Lead | Clinical validation test logs, physician override logs, error rate audits |
+| CD-02 | **Health Data Leakage & DPDP Violation** | Exposure or unauthorized processing of sensitive personal data (EHR, diagnostic reports, PII) in violation of India's DPDP Act 2023 | Clinic patients | Critical | Possible | Field-level de-identification/anonymization before model inference; AES-256 encryption at rest and in transit; role-based access; zero data retention for training without consent | Data Protection Officer | DPDP compliance certificate, encryption verification, penetration test reports |
+| CD-03 | **Demographic & Pathological Bias** | Model performs with varying accuracy across patient age brackets, genders, socioeconomic backgrounds, or rare clinical presentations | Patients from underrepresented cohorts | High | Possible | Pre-deployment bias audit across demographic cohorts; stratified test datasets; clear model cards declaring performance boundaries | Governance Lead + AI Lead | Pre-deployment bias audit report, demographic performance matrix |
+| CD-04 | **Physician Automation Bias** | Over-reliance by clinicians leading to rubber-stamping AI diagnostic outputs without independent critical clinical evaluation | Clinic patients, medical staff | High | Likely | Interface requires explicit physician confirmation of reviewed indicators; un-preselected checkboxes; continuous monitoring of physician review time | Product Lead + Clinical Director | Clinician interaction logs, dwell-time analytics, user training records |
+| CD-05 | **Hallucination of Medical Protocols & Dosages** | Generative components invent non-existent contraindications, incorrect pharmacological dosages, or outdated clinical guidelines | Patients receiving prescribed treatments | Critical | Possible | RAG grounding strictly constrained to accredited clinical compendia (e.g., ICMR, WHO, Pharmacopoeia); deterministic guardrails on dosage ranges | AI Lead + Medical Safety Officer | Factual grounding benchmarks, dosage limit guardrail test results |
+| CD-06 | **Data Drift from Clinical Equipment & Lab Variations** | Calibration differences in clinic lab equipment or imaging protocols degrade AI diagnostic precision over time | Clinic patients, diagnostic labs | High | Likely | Ongoing drift detection pipeline; periodic retraining with calibrated multi-clinic datasets; quarterly model accuracy re-certification | MLOps Lead | Model drift dashboard, quarterly re-certification reports |
+
+---
+
 ## Risk Register Maintenance
 
 | Activity | Frequency | Owner |

@@ -83,4 +83,25 @@ Every significant decision considers:
 
 ---
 
+## Demo-Safe CLI Behavior
+
+This repository includes a safe demo implementation for CLI approval gates. The `guarded_actions.py` module simulates actions such as email sending, file writes, file deletion, and command execution unless an explicit approval path is triggered. This keeps the project safe for local testing and demonstration without performing destructive or external side effects by default.
+
+For live or production usage, the same approval pattern can be extended to real integrations with email providers, file systems, and shell execution after adding the required credentials and safeguards.
+
+---
+
+## Shared PC and Mobile Chat
+
+The responsive web chat lets your PC and phone use the same saved conversation while connected to the same private Wi-Fi network. The agent runs on the PC; the phone connects to it through a browser. Chat messages are stored locally on the PC in `memory/chat_history.sqlite3`.
+
+1. Install dependencies with `.venv\Scripts\python.exe -m pip install -r requirements.txt`.
+2. Start both agents and the chat server from the Co-Founder project root with `.venv\Scripts\python.exe run_web.py --host 0.0.0.0 --ba-project D:\BA-Agent-for-Mugil`. The BA Agent runs on localhost port 8001; the shared chat runs on port 8000.
+3. Select **Business Analyst** in the chat to send a message to the BA agent. The other personas continue using the Co-Founder agents. The Business Analyst reuses one ADK conversation session.
+4. Use the printed access code to sign in at the PC URL and the private Wi-Fi URL shown in the terminal on your phone. Both devices must be on the same Wi-Fi network.
+
+The launcher expects the BA project at `D:\BA-Agent-for-Mugil` and uses that project's `.venv\Scripts\adk.exe` and `.env`; it does not read or display the BA credentials. The server generates a temporary chat access code at startup unless `COFOUNDER_CHAT_PASSWORD` is set in the environment or `.env`. Restarting without a configured code generates a new one; saved chat messages remain on the PC. If Windows Firewall prompts you, allow access on private networks only. Do not port-forward either server or expose them to the public internet. The BA API binds only to localhost; `--host 0.0.0.0` applies only to the shared chat so other devices on Wi-Fi can reach it.
+
+---
+
 *Built by Mugil Soft Solutions. All governance content is for professional and educational purposes. Legal advice should be sought from qualified professionals where required.*

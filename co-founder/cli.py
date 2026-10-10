@@ -40,6 +40,9 @@ from rich.prompt import Prompt, Confirm
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich import box
 
+from dotenv import load_dotenv
+load_dotenv()
+
 try:
     from google import genai  # google-genai package
     HAS_GENAI = True
@@ -49,7 +52,7 @@ except ImportError:
 import guarded_actions
 from guarded_actions import ApprovalRequired
 
-console = Console()
+console = Console(legacy_windows=False)
 
 # ---------------------------------------------------------------------------
 # Knowledge Base
@@ -286,11 +289,33 @@ def call_llm(system_prompt: str, query: str, context: str) -> str:
         )
 
     try:
+        from google.genai import types
         client = genai.Client(api_key=api_key)
-        prompt = f"{system_prompt}\n\nContext:\n{context}\n\nQuestion: {query}"
-        response = client.models.generate_content(model=model, contents=prompt)
-        return response.text
+        prompt = f"{system_prompt}\n\nContext:\n{context}\n\nQuestion: {query[:2000]}"
+        max_tokens = int(os.environ.get("MAX_OUTPUT_TOKENS", "1024"))
+        config = types.GenerateContentConfig(max_output_tokens=max_tokens)
+        response = client.models.generate_content(model=model, contents=prompt, config=config)
+        # Guard against empty/None response (e.g. safety filter blocks)
+        text = getattr(response, "text", None)
+        if not text:
+            finish = getattr(response.candidates[0], "finish_reason", "UNKNOWN") if response.candidates else "NO_CANDIDATES"
+            return (
+                f"> [!WARNING]\n"
+                f"> **Model returned an empty response** (finish_reason: `{finish}`). "
+                "This may be due to a safety filter or a blocked prompt. "
+                "Please rephrase your question.\n\n"
+                f"{context[:400] or '(no knowledge base context found)'}"
+            )
+        return text
     except Exception as e:
+        err_str = str(e)
+        if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+            return (
+                "> [!NOTE]\n"
+                "> **API Quota Limit Reached (429 Rate Limit)**: Free-tier quota exceeded. "
+                "Falling back to verified knowledge base context.\n\n"
+                f"{context}"
+            )
         return f"**[LLM call failed]** {e}"
 
 
