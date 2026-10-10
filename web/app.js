@@ -51,6 +51,70 @@ function addMessage(message) {
   const bubble = document.createElement("div");
   bubble.className = "message-bubble";
   bubble.textContent = message.content;
+
+  const contentUpper = message.content.toUpperCase();
+  const needsApproval =
+    message.role === "assistant" &&
+    (contentUpper.includes("FOUNDER APPROVAL REQUIRED") ||
+      contentUpper.includes("TIER 3") ||
+      contentUpper.includes("HUMAN APPROVAL REQUIRED"));
+
+  const alreadyApproved =
+    message.role === "assistant" &&
+    (contentUpper.includes("APPROVED BY FOUNDER") ||
+      contentUpper.includes("FOUNDER APPROVAL DECISION RECORDED"));
+
+  if (alreadyApproved) {
+    const badge = document.createElement("div");
+    badge.className = "approved-badge-card";
+    badge.innerHTML = '<span>🛡️</span><span>Verified: Founder Approval Granted &amp; Logged</span>';
+    bubble.appendChild(badge);
+  } else if (needsApproval) {
+    const card = document.createElement("div");
+    card.className = "approval-card";
+    card.innerHTML = `
+      <div class="approval-card-header">
+        <span class="warning-badge">🚨 TIER 3 GOVERNANCE GATE</span>
+        <span class="approval-status-pill">Pending Founder Sign-off</span>
+      </div>
+      <p class="approval-card-title">Human-in-the-Loop checkpoint: Requires explicit Founder Approval to proceed.</p>
+      <div class="approval-actions">
+        <button id="inline-approve-${message.id}" class="btn-inline-approve" type="button">
+          ✓ Approve as Founder
+        </button>
+        <button id="inline-open-gate-${message.id}" class="btn-inline-spec" type="button">
+          🛡️ Open Founder Gate
+        </button>
+      </div>
+    `;
+
+    const inlineApproveBtn = card.querySelector(".btn-inline-approve");
+    inlineApproveBtn.addEventListener("click", async () => {
+      inlineApproveBtn.disabled = true;
+      inlineApproveBtn.textContent = "Recording...";
+      try {
+        await submitFounderApproval("Patient records & AI clinical diagnostics for medical clinics", "approved");
+        card.innerHTML = `
+          <div class="approved-badge-card" style="margin: 0;">
+            <span>🛡️</span><span>✅ Approved by Founder! HITL protocol active.</span>
+          </div>
+        `;
+        await refreshMessages();
+      } catch (err) {
+        inlineApproveBtn.disabled = false;
+        inlineApproveBtn.textContent = "✕ Error (Retry)";
+      }
+    });
+
+    const openGateBtn = card.querySelector(".btn-inline-spec");
+    openGateBtn.addEventListener("click", () => {
+      const gateBtn = document.querySelector("#founder-gate-btn");
+      if (gateBtn) gateBtn.click();
+    });
+
+    bubble.appendChild(card);
+  }
+
   item.append(label, bubble);
   messageList.append(item);
   messageList.scrollTop = messageList.scrollHeight;
@@ -143,6 +207,109 @@ chatForm.addEventListener("submit", async (event) => {
     messageInput.focus();
   }
 });
+
+// Founder Approval Handlers
+const founderGateBtn = document.querySelector("#founder-gate-btn");
+const founderModal = document.querySelector("#founder-modal");
+const btnCloseModal = document.querySelector("#btn-close-modal");
+const btnGrantApproval = document.querySelector("#btn-grant-approval");
+const btnRejectApproval = document.querySelector("#btn-reject-approval");
+const approvalProjectInput = document.querySelector("#approval-project");
+const approvalNotesInput = document.querySelector("#approval-notes");
+const founderFeedback = document.querySelector("#founder-feedback");
+
+async function submitFounderApproval(projectName, decision = "approved", notes = "") {
+  return await request("/api/approve-founder", {
+    method: "POST",
+    body: JSON.stringify({
+      project_name: projectName,
+      decision,
+      notes,
+    }),
+  });
+}
+
+if (founderGateBtn && founderModal) {
+  founderGateBtn.addEventListener("click", () => {
+    if (founderFeedback) {
+      founderFeedback.textContent = "";
+      founderFeedback.className = "founder-feedback";
+    }
+    if (typeof founderModal.showModal === "function") {
+      founderModal.showModal();
+    } else {
+      founderModal.setAttribute("open", "");
+    }
+  });
+}
+
+if (btnCloseModal && founderModal) {
+  btnCloseModal.addEventListener("click", () => {
+    if (typeof founderModal.close === "function") {
+      founderModal.close();
+    } else {
+      founderModal.removeAttribute("open");
+    }
+  });
+}
+
+if (btnGrantApproval) {
+  btnGrantApproval.addEventListener("click", async () => {
+    const project = (approvalProjectInput && approvalProjectInput.value.trim()) || "Patient records & AI clinical diagnostics for medical clinics";
+    const notes = approvalNotesInput ? approvalNotesInput.value.trim() : "";
+    btnGrantApproval.disabled = true;
+    if (founderFeedback) {
+      founderFeedback.textContent = "Recording Founder Approval...";
+      founderFeedback.className = "founder-feedback";
+    }
+    try {
+      await submitFounderApproval(project, "approved", notes);
+      if (founderFeedback) {
+        founderFeedback.textContent = "✓ Founder Approval granted & logged to memory/governance.md!";
+      }
+      setTimeout(() => {
+        if (founderModal && typeof founderModal.close === "function") founderModal.close();
+        btnGrantApproval.disabled = false;
+        refreshMessages();
+      }, 1100);
+    } catch (err) {
+      if (founderFeedback) {
+        founderFeedback.textContent = err.message || "Failed to record approval.";
+        founderFeedback.className = "founder-feedback error";
+      }
+      btnGrantApproval.disabled = false;
+    }
+  });
+}
+
+if (btnRejectApproval) {
+  btnRejectApproval.addEventListener("click", async () => {
+    const project = (approvalProjectInput && approvalProjectInput.value.trim()) || "Patient records & AI clinical diagnostics for medical clinics";
+    const notes = approvalNotesInput ? approvalNotesInput.value.trim() : "";
+    btnRejectApproval.disabled = true;
+    if (founderFeedback) {
+      founderFeedback.textContent = "Recording rejection...";
+      founderFeedback.className = "founder-feedback error";
+    }
+    try {
+      await submitFounderApproval(project, "rejected", notes);
+      if (founderFeedback) {
+        founderFeedback.textContent = "✕ Action marked as Rejected/Hold by Founder.";
+      }
+      setTimeout(() => {
+        if (founderModal && typeof founderModal.close === "function") founderModal.close();
+        btnRejectApproval.disabled = false;
+        refreshMessages();
+      }, 1100);
+    } catch (err) {
+      if (founderFeedback) {
+        founderFeedback.textContent = err.message || "Failed to record decision.";
+        founderFeedback.className = "founder-feedback error";
+      }
+      btnRejectApproval.disabled = false;
+    }
+  });
+}
 
 if (token) {
   showChat();

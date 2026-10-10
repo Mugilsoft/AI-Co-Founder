@@ -169,6 +169,32 @@ class SharedChatTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), [])
 
+    def test_founder_approval_requires_access_code(self):
+        response = self.client.post(
+            "/api/approve-founder",
+            json={"project_name": "Test Project", "decision": "approved"},
+        )
+        self.assertEqual(response.status_code, 401)
+
+    def test_founder_approval_endpoint_records_sign_off(self):
+        response = self.client.post(
+            "/api/approve-founder",
+            headers=self.headers,
+            json={
+                "project_name": "AI Clinical Diagnostics",
+                "decision": "approved",
+                "notes": "Test founder signoff.",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["status"], "ok")
+        self.assertEqual(data["decision"], "approved")
+
+        # Verify assistant message was saved to chat history
+        messages = self.client.get("/api/messages", headers=self.headers).json()
+        self.assertTrue(any("FOUNDER APPROVAL DECISION RECORDED" in m["content"] for m in messages))
+
 
 if __name__ == "__main__":
     unittest.main()

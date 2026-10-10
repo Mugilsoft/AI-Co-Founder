@@ -16,8 +16,12 @@
 6. `portfolio/06-ai-bias-audit.md` (Bias audit report framework)
 7. `portfolio/07-ai-governance-policy.md` (Mandatory corporate policy)
 8. `portfolio/08-ai-governance-case-study.md` (AI CV screening capstone)
+9. `docs/architecture/hitl-clinical-diagnostics-workflow.md` (Physician HITL clinical workflow specification)
 
 ---
 
 ## 3. Governance Audit & Gate Records
+- **2026-10-10**: **Founder Sign-Off: AI Clinical Diagnostics** - Decision: APPROVED. Notes: Test founder signoff.
+
 - **2026-09-19**: AI Governance Policy v1.0 ratified. Established 10 mandatory policy sections and Human-in-the-Loop Tier 3 sign-off requirements.
+- **2026-10-10**: **Tier 3 Audit Resolved — AI Clinical Diagnostics & Patient Records**. Enforced mandatory controls: (1) Added Use Case 4 to `portfolio/05-ai-risk-register.md`, (2) Established 5-stage Physician HITL workflow specification (`docs/architecture/hitl-clinical-diagnostics-workflow.md`), (3) Scheduled mandatory pre-deployment bias audit, (4) Founder sign-off recorded for prototyping and pilot architecture.

@@ -40,6 +40,9 @@ from rich.prompt import Prompt, Confirm
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich import box
 
+from dotenv import load_dotenv
+load_dotenv()
+
 try:
     from google import genai  # google-genai package
     HAS_GENAI = True
@@ -49,7 +52,7 @@ except ImportError:
 import guarded_actions
 from guarded_actions import ApprovalRequired
 
-console = Console()
+console = Console(legacy_windows=False)
 
 # ---------------------------------------------------------------------------
 # Knowledge Base

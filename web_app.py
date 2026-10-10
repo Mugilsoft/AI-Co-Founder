@@ -184,6 +184,70 @@ def send_message(
     }
 
 
+class FounderApprovalRequest(BaseModel):
+    project_name: str = Field(min_length=1, max_length=200)
+    decision: str = Field(default="approved", max_length=20)
+    notes: str = Field(default="", max_length=1000)
+
+
+@app.post("/api/approve-founder")
+def approve_founder(
+    request: FounderApprovalRequest,
+    _: Annotated[None, Depends(_require_access_code)],
+) -> dict[str, object]:
+    created_at = datetime.now(timezone.utc).isoformat()
+    date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    gov_file = PROJECT_ROOT / "memory" / "governance.md"
+    log_entry = (
+        f"- **{date_str}**: **Founder Sign-Off: {request.project_name}** - "
+        f"Decision: {request.decision.upper()}. "
+        f"Notes: {request.notes or 'Signed via Founder Approval Gate in Web Console.'}\n"
+    )
+    if gov_file.exists():
+        content = gov_file.read_text(encoding="utf-8")
+        if "## 3. Governance Audit & Gate Records" in content:
+            updated_content = content.replace(
+                "## 3. Governance Audit & Gate Records",
+                f"## 3. Governance Audit & Gate Records\n{log_entry}",
+            )
+        else:
+            updated_content = content + f"\n\n## 3. Governance Audit & Gate Records\n{log_entry}"
+        gov_file.write_text(updated_content, encoding="utf-8")
+
+    if request.decision.lower() == "approved":
+        msg_content = (
+            f"🛡️ **FOUNDER APPROVAL DECISION RECORDED**\n\n"
+            f"- **Project / Action**: {request.project_name}\n"
+            f"- **Decision**: **APPROVED BY FOUNDER**\n"
+            f"- **Audit Record**: Logged to `memory/governance.md`\n"
+            f"- **Governance Controls**: Tier 3 HITL Physician Gate active. Authorized for Architecture & Prototyping."
+        )
+    else:
+        msg_content = (
+            f"⛔ **FOUNDER ACTION REJECTED / ON HOLD**\n\n"
+            f"- **Project / Action**: {request.project_name}\n"
+            f"- **Decision**: **REJECTED / HOLD**\n"
+            f"- **Audit Record**: Logged to `memory/governance.md`\n"
+            f"- **Reason**: {request.notes or 'Operation aborted or put on hold by Founder.'}"
+        )
+
+    with _database_connection() as connection:
+        cursor = connection.execute(
+            "INSERT INTO messages (role, content, agent_key, created_at) VALUES (?, ?, ?, ?)",
+            ("assistant", msg_content, "governance", created_at),
+        )
+        assistant_message_id = cursor.lastrowid
+
+    return {
+        "status": "ok",
+        "assistant_message_id": assistant_message_id,
+        "decision": request.decision,
+        "project_name": request.project_name,
+        "recorded_at": created_at,
+    }
+
+
 def result_agent_name(agent_key: str) -> str:
     if agent_key == "ba_agent":
         return AgentRouter.AGENTS["ba_agent"]
